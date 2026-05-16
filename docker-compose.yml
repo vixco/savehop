@@ -1,0 +1,14 @@
+services:
+  savehop:
+    build: ./server
+    image: savehop-server:local
+    container_name: savehop
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./data:/data
+    environment:
+      PORT: 8787
+      DATA_DIR: /data
+      MAX_SAVE_MB: 100

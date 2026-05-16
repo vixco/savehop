@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('app/src-tauri/Cargo.toml') }}
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Generate icons
+        run: |
+          npm install --no-save sharp
+          node scripts/generate-icons.mjs
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ''
+        with:
+          projectPath: app
+          tagName: ${{ steps.ver.outputs.tag }}
+          releaseName: 'Savehop ${{ steps.ver.outputs.tag }}'
+          releaseBody: |
+            ### Savehop ${{ steps.ver.outputs.tag }}
+
+            Download `Savehop-Setup-${{ steps.ver.outputs.version }}.exe` below to install.
+
+            Windows 10/11 · Free · No account required · MIT licensed.
+
+            See the [README](https://github.com/${{ github.repository }}#readme) for setup and the [self-hosting guide](https://github.com/${{ github.repository }}/blob/main/SELF_HOSTING.md) if you want to run your own server.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: false
+          args: --bundles nsis
+
+      - name: Rename installer asset
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $src = Get-ChildItem -Path src-tauri\target\release\bundle\nsis -Filter "*.exe" | Select-Object -First 1
+          if ($src) {
+            $dest = Join-Path $src.Directory.FullName "Savehop-Setup-$version.exe"
+            if ($src.FullName -ne $dest) { Copy-Item $src.FullName $dest -Force }
+            Write-Host "Renamed installer to $dest"
+          }
+
+      - name: Upload renamed installer to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          files: app/src-tauri/target/release/bundle/nsis/Savehop-Setup-${{ steps.ver.outputs.version }}.exe
+          fail_on_unmatched_files: false
