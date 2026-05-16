@@ -19,7 +19,9 @@ pub fn detect_games() -> Vec<DetectedGame> {
     let roots = collect_scan_roots();
     let mut exe_map: HashMap<String, &'static KnownGame> = HashMap::new();
     for g in GAMES {
-        exe_map.insert(g.exe.to_lowercase(), g);
+        for exe in g.exes {
+            exe_map.insert(exe.to_lowercase(), g);
+        }
     }
 
     let mut found: HashMap<&'static str, PathBuf> = HashMap::new();
