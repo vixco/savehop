@@ -24,6 +24,32 @@ pub fn detect_games() -> Vec<DetectedGame> {
 
     let mut found: HashMap<&'static str, PathBuf> = HashMap::new();
 
+    // Xbox Game Pass / MS Store: detect by package folder, since the .exe is
+    // inside protected WindowsApps. The save-path + tray-watch still work because
+    // we match the process by exe name in sysinfo, and the save path is in user-readable LocalAppData.
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        let packages = std::path::Path::new(&local).join("Packages");
+        if packages.exists() {
+            if let Ok(read) = std::fs::read_dir(&packages) {
+                for entry in read.flatten() {
+                    let folder = entry.file_name();
+                    let folder_str = folder.to_string_lossy();
+                    for game in GAMES {
+                        if let Some(pkg) = game.xbox_package {
+                            if folder_str.starts_with(pkg) {
+                                // Use a sentinel path; the executable name from the DB is what we
+                                // actually need for the process watch.
+                                found
+                                    .entry(game.name)
+                                    .or_insert_with(|| entry.path().to_path_buf());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     for root in &roots {
         for entry in WalkDir::new(root)
             .max_depth(6)

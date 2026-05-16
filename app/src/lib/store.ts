@@ -45,6 +45,12 @@ function uuid() {
 
 const DEFAULT_SERVER = (import.meta as any).env?.VITE_SERVER_URL || 'https://savehop.tovix.com';
 
+/** URLs that used to be the default — wipe them out of localStorage on app upgrade. */
+const STALE_DEFAULTS = new Set<string>([
+  'https://savehop.fly.dev',
+  '',
+]);
+
 type Store = {
   // Identity
   memberId: string;
@@ -128,6 +134,15 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'savehop',
+      version: 2,
+      migrate: (persisted: any, fromVersion) => {
+        if (!persisted) return persisted;
+        // v0 → v1: wipe stale default server URLs so the new default kicks in
+        if (fromVersion < 2 && STALE_DEFAULTS.has(persisted.serverUrl)) {
+          persisted.serverUrl = DEFAULT_SERVER;
+        }
+        return persisted;
+      },
       partialize: (s) => ({
         memberId: s.memberId,
         memberName: s.memberName,

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Savehop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "dev.savehop.app",
   "build": {
     "frontendDist": "../dist",
@@ -27,7 +27,8 @@
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": false
   },
   "bundle": {
     "active": true,
@@ -43,6 +44,7 @@
     "shortDescription": "Co-op save sync for Windows",
     "longDescription": "Savehop lets friends share a single co-op save without a dedicated server. Wake to claim the save, play, then Sleep to hand it off.",
     "copyright": "MIT — Savehop contributors",
+    "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
         "installMode": "currentUser",
@@ -50,5 +52,13 @@
       }
     }
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "active": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM0NjNENUU3NUVCQ0Q2MwpSV1JqemV0MVhqMUdBOEcyTGpDdFNEVExGeU9GSVBhMEQvelkvRXRWU2VYSS9pVDE3REFlamJ2OQo=",
+      "endpoints": [
+        "https://github.com/vixco/savehop/releases/latest/download/latest.json"
+      ]
+    }
+  }
 }

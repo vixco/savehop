@@ -15,9 +15,22 @@ async function handle<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+/** Run a fetch and translate the opaque "Failed to fetch" into a useful diagnostic. */
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (e: any) {
+    const detail = e?.message || String(e);
+    // WebView2 / TLS / DNS surfaces as "Failed to fetch" with no detail.
+    throw new ApiError(
+      `Cannot reach server at ${url} — ${detail}. Check your internet connection or change Server URL in Settings.`,
+    );
+  }
+}
+
 export const api = {
   async createRoom(server: string, memberId: string, memberName: string): Promise<RoomState> {
-    const res = await fetch(`${server}/rooms`, {
+    const res = await safeFetch(`${server}/rooms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId, memberName }),
@@ -26,12 +39,12 @@ export const api = {
   },
 
   async getRoom(server: string, code: string): Promise<RoomState> {
-    const res = await fetch(`${server}/rooms/${code}`);
+    const res = await safeFetch(`${server}/rooms/${code}`);
     return (await handle<{ room: RoomState }>(res)).room;
   },
 
   async joinRoom(server: string, code: string, memberId: string, memberName: string): Promise<RoomState> {
-    const res = await fetch(`${server}/rooms/${code}/join`, {
+    const res = await safeFetch(`${server}/rooms/${code}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId, memberName }),
@@ -40,7 +53,7 @@ export const api = {
   },
 
   async heartbeat(server: string, code: string, memberId: string): Promise<void> {
-    await fetch(`${server}/rooms/${code}/heartbeat`, {
+    await safeFetch(`${server}/rooms/${code}/heartbeat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId }),
@@ -48,7 +61,7 @@ export const api = {
   },
 
   async wake(server: string, code: string, memberId: string): Promise<RoomState> {
-    const res = await fetch(`${server}/rooms/${code}/wake`, {
+    const res = await safeFetch(`${server}/rooms/${code}/wake`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId }),
@@ -64,12 +77,12 @@ export const api = {
     const ab = new ArrayBuffer(data.byteLength);
     new Uint8Array(ab).set(data);
     form.append('save', new Blob([ab], { type: 'application/octet-stream' }), 'save.bin');
-    const res = await fetch(`${server}/rooms/${code}/sleep`, { method: 'POST', body: form });
+    const res = await safeFetch(`${server}/rooms/${code}/sleep`, { method: 'POST', body: form });
     return (await handle<{ room: RoomState }>(res)).room;
   },
 
   async downloadSave(server: string, code: string): Promise<Uint8Array> {
-    const res = await fetch(`${server}/rooms/${code}/save`);
+    const res = await safeFetch(`${server}/rooms/${code}/save`);
     if (!res.ok) {
       let body: any = null;
       try { body = await res.json(); } catch {}
@@ -80,7 +93,7 @@ export const api = {
   },
 
   async forceUnlock(server: string, code: string, memberId: string): Promise<RoomState> {
-    const res = await fetch(`${server}/rooms/${code}/lock`, {
+    const res = await safeFetch(`${server}/rooms/${code}/lock`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memberId }),

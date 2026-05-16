@@ -66,7 +66,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ''
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: app
           tagName: ${{ steps.ver.outputs.tag }}
@@ -75,13 +76,15 @@ jobs:
             ### Savehop ${{ steps.ver.outputs.tag }}
 
             Download `Savehop-Setup-${{ steps.ver.outputs.version }}.exe` below to install.
+            Existing users get this update automatically — no need to re-download.
 
             Windows 10/11 · Free · No account required · MIT licensed.
 
             See the [README](https://github.com/${{ github.repository }}#readme) for setup and the [self-hosting guide](https://github.com/${{ github.repository }}/blob/main/SELF_HOSTING.md) if you want to run your own server.
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: false
+          includeUpdaterJson: true
+          updaterJsonKeepUniversal: true
           args: --bundles nsis
 
       - name: Rename installer asset
