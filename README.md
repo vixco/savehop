@@ -1,4 +1,4 @@
-# Savehop — Co-op Save Sync for Windows
+# Savehop: Co-op Save Sync for Windows
 
 > **Play any co-op game together — even when the host is offline.**
 > No port forwarding. No dedicated servers. No accounts. Free and open source.
