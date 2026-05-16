@@ -97,7 +97,7 @@ That's the whole workflow. If somebody crashes or forgets to Sleep, click **Forc
 
 ## Self-hosting the server
 
-You can absolutely just use the public relay at `https://savehop.tovix.com` and never think about it. But if you want full ownership of your save files, you can run your own in **one command**:
+You can absolutely just use the public relay at `https://relay.savehop.tovix.nl` and never think about it. But if you want full ownership of your save files, you can run your own in **one command**:
 
 ```bash
 git clone https://github.com/vixco/savehop.git

@@ -43,11 +43,12 @@ function uuid() {
   });
 }
 
-export const DEFAULT_SERVER: string = (import.meta as any).env?.VITE_SERVER_URL || 'https://savehop.tovix.com';
+export const DEFAULT_SERVER: string = (import.meta as any).env?.VITE_SERVER_URL || 'https://relay.savehop.tovix.nl';
 
 /** URLs that used to be the default — wipe them out of localStorage on app upgrade. */
 const STALE_DEFAULTS = new Set<string>([
   'https://savehop.fly.dev',
+  'https://savehop.tovix.com',
   '',
 ]);
 
@@ -138,7 +139,7 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'savehop',
-      version: 3,
+      version: 4,
       migrate: (persisted: any, fromVersion) => {
         if (!persisted) return persisted;
         if (fromVersion < 2 && STALE_DEFAULTS.has(persisted.serverUrl)) {
@@ -146,6 +147,11 @@ export const useStore = create<Store>()(
         }
         if (fromVersion < 3 && typeof persisted.autoWakeOnPromotion !== 'boolean') {
           persisted.autoWakeOnPromotion = true;
+        }
+        // v4: tovix.com relay moved to relay.savehop.tovix.nl. Only flip
+        // users that were still on the old default; leave self-hosters alone.
+        if (fromVersion < 4 && STALE_DEFAULTS.has(persisted.serverUrl)) {
+          persisted.serverUrl = DEFAULT_SERVER;
         }
         return persisted;
       },
