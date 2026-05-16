@@ -43,7 +43,7 @@ function uuid() {
   });
 }
 
-const DEFAULT_SERVER = (import.meta as any).env?.VITE_SERVER_URL || 'https://savehop.tovix.com';
+export const DEFAULT_SERVER: string = (import.meta as any).env?.VITE_SERVER_URL || 'https://savehop.tovix.com';
 
 /** URLs that used to be the default — wipe them out of localStorage on app upgrade. */
 const STALE_DEFAULTS = new Set<string>([

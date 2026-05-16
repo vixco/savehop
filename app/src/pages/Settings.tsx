@@ -10,7 +10,7 @@ import {
 } from '@tauri-apps/plugin-autostart';
 import { check as checkUpdate } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
-import { useStore, type SelectedGame } from '../lib/store';
+import { useStore, type SelectedGame, DEFAULT_SERVER } from '../lib/store';
 import { ChevronLeftIcon, BookmarkIcon } from '../lib/ui';
 
 type DetectedGame = {
@@ -195,6 +195,12 @@ export default function Settings() {
     showToast('Server saved');
   }
 
+  function resetServer() {
+    setServerDraft(DEFAULT_SERVER);
+    setServerUrl(DEFAULT_SERVER);
+    showToast('Relay reset');
+  }
+
   function clearSelection() {
     setSelectedGame(null);
     setGamePath('');
@@ -375,7 +381,12 @@ export default function Settings() {
 
         {/* Server */}
         <div className="card">
-          <div className="label">Relay server</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="label">Relay server</div>
+            {serverDraft.trim().replace(/\/+$/, '') !== DEFAULT_SERVER && (
+              <button className="subtle-link" onClick={resetServer}>Reset to default</button>
+            )}
+          </div>
           <input
             className="input"
             style={{ fontSize: 13, fontFamily: "'Space Mono', monospace" }}
@@ -383,7 +394,7 @@ export default function Settings() {
             onChange={(e) => setServerDraft(e.target.value)}
             onBlur={saveServer}
             onKeyDown={(e) => { if (e.key === 'Enter') saveServer(); }}
-            placeholder="https://savehop.tovix.com"
+            placeholder={DEFAULT_SERVER}
           />
           <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
             Point this at your own server for full privacy. See SELF_HOSTING.md.
