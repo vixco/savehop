@@ -1,5 +1,15 @@
 import type { RoomState } from './store';
 
+export type WsMessage =
+  | { type: 'room_update'; room: RoomState }
+  | {
+      type: 'host_promoted';
+      memberId: string;
+      memberName: string;
+      previousHolderId: string | null;
+      ts: number;
+    };
+
 export class ApiError extends Error {
   constructor(message: string, public status?: number, public code?: string) {
     super(message);

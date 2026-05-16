@@ -40,6 +40,7 @@ export default function Settings() {
     autoRejoin, setAutoRejoin,
     autoWakeOnLaunch, setAutoWakeOnLaunch,
     autoSleepOnGameExit, setAutoSleepOnGameExit,
+    autoWakeOnPromotion, setAutoWakeOnPromotion,
     startMinimized, setStartMinimized,
     launchOnStartup, setLaunchOnStartup,
   } = useStore();
@@ -292,6 +293,20 @@ export default function Settings() {
             <Toggle
               checked={autoSleepOnGameExit}
               onChange={setAutoSleepOnGameExit}
+            />
+          </div>
+
+          <div className="setting-row">
+            <div className="content">
+              <div className="title">Auto-wake when promoted to host</div>
+              <div className="desc">
+                When the current host stops playing, the next online member is auto-promoted.
+                If that's you, immediately claim the save so you can launch the game right away.
+              </div>
+            </div>
+            <Toggle
+              checked={autoWakeOnPromotion}
+              onChange={setAutoWakeOnPromotion}
             />
           </div>
         </div>

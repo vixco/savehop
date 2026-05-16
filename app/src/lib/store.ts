@@ -71,6 +71,7 @@ type Store = {
   autoRejoin: boolean;
   autoWakeOnLaunch: boolean;
   autoSleepOnGameExit: boolean;
+  autoWakeOnPromotion: boolean;
   startMinimized: boolean;
   launchOnStartup: boolean;
 
@@ -87,6 +88,7 @@ type Store = {
   setAutoRejoin: (v: boolean) => void;
   setAutoWakeOnLaunch: (v: boolean) => void;
   setAutoSleepOnGameExit: (v: boolean) => void;
+  setAutoWakeOnPromotion: (v: boolean) => void;
   setStartMinimized: (v: boolean) => void;
   setLaunchOnStartup: (v: boolean) => void;
 
@@ -109,6 +111,7 @@ export const useStore = create<Store>()(
       autoRejoin: true,
       autoWakeOnLaunch: false,
       autoSleepOnGameExit: false,
+      autoWakeOnPromotion: true,
       startMinimized: false,
       launchOnStartup: false,
 
@@ -124,6 +127,7 @@ export const useStore = create<Store>()(
       setAutoRejoin: (v) => set({ autoRejoin: v }),
       setAutoWakeOnLaunch: (v) => set({ autoWakeOnLaunch: v }),
       setAutoSleepOnGameExit: (v) => set({ autoSleepOnGameExit: v }),
+      setAutoWakeOnPromotion: (v) => set({ autoWakeOnPromotion: v }),
       setStartMinimized: (v) => set({ startMinimized: v }),
       setLaunchOnStartup: (v) => set({ launchOnStartup: v }),
 
@@ -134,12 +138,14 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'savehop',
-      version: 2,
+      version: 3,
       migrate: (persisted: any, fromVersion) => {
         if (!persisted) return persisted;
-        // v0 → v1: wipe stale default server URLs so the new default kicks in
         if (fromVersion < 2 && STALE_DEFAULTS.has(persisted.serverUrl)) {
           persisted.serverUrl = DEFAULT_SERVER;
+        }
+        if (fromVersion < 3 && typeof persisted.autoWakeOnPromotion !== 'boolean') {
+          persisted.autoWakeOnPromotion = true;
         }
         return persisted;
       },
@@ -153,6 +159,7 @@ export const useStore = create<Store>()(
         autoRejoin: s.autoRejoin,
         autoWakeOnLaunch: s.autoWakeOnLaunch,
         autoSleepOnGameExit: s.autoSleepOnGameExit,
+        autoWakeOnPromotion: s.autoWakeOnPromotion,
         startMinimized: s.startMinimized,
         launchOnStartup: s.launchOnStartup,
       }),

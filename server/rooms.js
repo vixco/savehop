@@ -8,6 +8,12 @@ const rooms = loadRooms();
 const subscribers = new Map();
 
 const OFFLINE_AFTER_MS = 30_000;
+const HOST_STALE_AFTER_MS = 60_000;
+
+// Migrate any rooms loaded from disk to the v2 shape.
+for (const r of Object.values(rooms)) {
+  if (!r.lastHostAt) r.lastHostAt = {};
+}
 
 export function createRoom(creator) {
   let code;
@@ -23,6 +29,7 @@ export function createRoom(creator) {
     saveVersion: 0,
     lastSyncAt: null,
     saveSize: 0,
+    lastHostAt: {},
     members: {
       [creator.id]: {
         id: creator.id,
@@ -45,6 +52,7 @@ export function getRoom(code) {
 export function joinRoom(code, member) {
   const r = rooms[code];
   if (!r) return null;
+  if (!r.lastHostAt) r.lastHostAt = {};
   r.members[member.id] = {
     id: member.id,
     name: member.name,
@@ -81,6 +89,8 @@ export function sleep(code, memberId, size) {
   const r = rooms[code];
   if (!r) return { error: 'room_not_found' };
   if (r.lockHolder !== memberId) return { error: 'not_lock_holder' };
+  r.lastHostAt = r.lastHostAt || {};
+  r.lastHostAt[memberId] = Date.now();
   r.lockHolder = null;
   r.lockAcquiredAt = null;
   r.saveVersion += 1;
@@ -88,6 +98,7 @@ export function sleep(code, memberId, size) {
   r.saveSize = size;
   persistRooms(rooms);
   broadcast(code);
+  promoteNextHost(code, memberId);
   return { ok: true, room: serializeRoom(r) };
 }
 
@@ -95,11 +106,46 @@ export function forceUnlock(code, memberId) {
   const r = rooms[code];
   if (!r) return { error: 'room_not_found' };
   if (!r.members[memberId]) return { error: 'not_in_room' };
+  const previous = r.lockHolder;
+  if (previous) {
+    r.lastHostAt = r.lastHostAt || {};
+    r.lastHostAt[previous] = Date.now();
+  }
   r.lockHolder = null;
   r.lockAcquiredAt = null;
   persistRooms(rooms);
   broadcast(code);
+  if (previous) promoteNextHost(code, previous);
   return { ok: true, room: serializeRoom(r) };
+}
+
+/**
+ * Pick the next eligible online member and emit a `host_promoted` event.
+ * Does NOT acquire the lock for them — they still need to /wake to download.
+ */
+function promoteNextHost(code, previousHolderId) {
+  const r = rooms[code];
+  if (!r) return null;
+  const now = Date.now();
+  const candidates = Object.values(r.members)
+    .filter((m) => m.id !== previousHolderId && now - m.lastSeen < OFFLINE_AFTER_MS)
+    .sort((a, b) => {
+      const la = r.lastHostAt?.[a.id] ?? 0;
+      const lb = r.lastHostAt?.[b.id] ?? 0;
+      if (la !== lb) return la - lb;
+      return a.joinedAt - b.joinedAt;
+    });
+
+  if (candidates.length === 0) return null;
+  const next = candidates[0];
+  emitEvent(code, {
+    type: 'host_promoted',
+    memberId: next.id,
+    memberName: next.name,
+    previousHolderId: previousHolderId || null,
+    ts: Date.now(),
+  });
+  return next.id;
 }
 
 function serializeRoom(r) {
@@ -147,8 +193,39 @@ export function broadcast(code) {
   }
 }
 
+function emitEvent(code, payload) {
+  const set = subscribers.get(code);
+  if (!set) return;
+  const serialized = JSON.stringify(payload);
+  for (const ws of set) {
+    if (ws.readyState === 1) {
+      try { ws.send(serialized); } catch {}
+    }
+  }
+}
+
+// Unified ticker: broadcast room state every 10s, and detect stale hosts
+// (heartbeat dead for >60s) so we can auto-promote without waiting on the
+// host's client to do anything.
 setInterval(() => {
+  const now = Date.now();
   for (const code of Object.keys(rooms)) {
+    const r = rooms[code];
+    if (r.lockHolder) {
+      const holder = r.members[r.lockHolder];
+      const lastSeen = holder?.lastSeen ?? 0;
+      if (!holder || now - lastSeen > HOST_STALE_AFTER_MS) {
+        const previous = r.lockHolder;
+        r.lastHostAt = r.lastHostAt || {};
+        r.lastHostAt[previous] = lastSeen || now;
+        r.lockHolder = null;
+        r.lockAcquiredAt = null;
+        persistRooms(rooms);
+        broadcast(code);
+        promoteNextHost(code, previous);
+        continue;
+      }
+    }
     broadcast(code);
   }
 }, 10_000);

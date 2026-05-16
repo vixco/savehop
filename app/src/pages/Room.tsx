@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useStore, type RoomState } from '../lib/store';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, type WsMessage } from '../lib/api';
+import { notify } from '../lib/notify';
 import {
   CopyIcon, SunIcon, MoonIcon, ClockIcon, SaveIcon, LockIcon,
   CrownIcon, GearIcon, avatarColors, avatarInitial,
@@ -54,7 +55,7 @@ export default function Room() {
     room, setRoom,
     syncStatus, setSyncStatus,
     setRoomCode,
-    autoWakeOnLaunch, autoSleepOnGameExit,
+    autoWakeOnLaunch, autoSleepOnGameExit, autoWakeOnPromotion,
   } = useStore();
 
   const [toast, setToast] = useState<string | null>(null);
@@ -149,9 +150,22 @@ export default function Room() {
     wsRef.current = ws;
     ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(ev.data);
+        const msg = JSON.parse(ev.data) as WsMessage;
         if (msg.type === 'room_update' && msg.room) {
           setRoom(msg.room as RoomState);
+        } else if (msg.type === 'host_promoted') {
+          if (msg.memberId === memberId) {
+            showToast("You're now the host — wake when ready");
+            void notify(
+              'Savehop — you are now the host',
+              'The previous host left. Press Wake to download the save and continue.',
+            );
+            if (autoWakeOnPromotion) {
+              void doWake();
+            }
+          } else {
+            showToast(`${msg.memberName} is now the host`);
+          }
         }
       } catch {}
     };
@@ -250,6 +264,16 @@ export default function Room() {
   const lockElapsed = room.lockAcquiredAt ? formatHMS(now - room.lockAcquiredAt) : '00:00:00';
   const onlineCount = room.members.filter((m) => m.online).length;
 
+  // Heuristic "next in line" — only shown while someone else holds the lock.
+  // Server is authoritative on actual promotion; this is a UX hint based on join order.
+  const nextInLine = (() => {
+    if (!isLocked || onlineCount < 2) return null;
+    const candidates = room.members
+      .filter((m) => m.online && m.id !== room.lockHolder)
+      .sort((a, b) => a.lastSeen - b.lastSeen);
+    return candidates[0] || null;
+  })();
+
   return (
     <>
       <div className="top-bar">
@@ -286,13 +310,20 @@ export default function Room() {
           </div>
         )}
         {someoneElseHoldsLock && (
-          <div className="status-banner waiting">
-            <div className="left">
-              <span className="status-dot amber" />
-              <span>{room.lockHolderName} has the save</span>
+          <>
+            <div className="status-banner waiting">
+              <div className="left">
+                <span className="status-dot amber" />
+                <span>{room.lockHolderName} has the save</span>
+              </div>
+              <div className="right">{lockElapsed}</div>
             </div>
-            <div className="right">{lockElapsed}</div>
-          </div>
+            {nextInLine && (
+              <div style={{ fontSize: 11, color: 'var(--text-faint)', textAlign: 'center', marginTop: -10 }}>
+                Next host if {room.lockHolderName} leaves: <strong style={{ color: 'var(--text-dim)' }}>{nextInLine.id === memberId ? 'you' : nextInLine.name}</strong>
+              </div>
+            )}
+          </>
         )}
 
         <div className="members-card">
