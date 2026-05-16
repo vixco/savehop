@@ -183,6 +183,43 @@ export function unsubscribe(code, ws) {
   if (set.size === 0) subscribers.delete(code);
 }
 
+/**
+ * Aggregate counts only — no member names, IDs, or room codes leave this
+ * function. Used by the owner-only /stats endpoint. We're not collecting
+ * anything new here: every value is derived from data the relay already
+ * needs to track in order to route saves and lock state.
+ */
+export function getAggregateStats() {
+  const now = Date.now();
+  const allRooms = Object.values(rooms);
+
+  // Unique members across all rooms, deduped by id. A user who joins
+  // multiple rooms still counts once.
+  const allIds = new Set();
+  const onlineIds = new Set();
+  let activeRooms = 0; // rooms with at least one online member OR a held lock
+
+  for (const r of allRooms) {
+    let roomHasOnline = false;
+    for (const m of Object.values(r.members)) {
+      allIds.add(m.id);
+      if (now - m.lastSeen < OFFLINE_AFTER_MS) {
+        onlineIds.add(m.id);
+        roomHasOnline = true;
+      }
+    }
+    if (roomHasOnline || r.lockHolder) activeRooms += 1;
+  }
+
+  return {
+    rooms: allRooms.length,
+    activeRooms,
+    members: allIds.size,
+    onlineMembers: onlineIds.size,
+    serverTime: now,
+  };
+}
+
 export function broadcast(code) {
   const set = subscribers.get(code);
   if (!set) return;

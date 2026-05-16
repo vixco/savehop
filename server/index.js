@@ -13,12 +13,14 @@ import {
   subscribe,
   unsubscribe,
   heartbeat,
+  getAggregateStats,
 } from './rooms.js';
 import { storeSave, readSave, ensureDir } from './storage.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const MAX_SAVE_MB = Number(process.env.MAX_SAVE_MB || 100);
 const DATA_DIR = process.env.DATA_DIR || './data';
+const STATS_TOKEN = process.env.STATS_TOKEN || '';
 
 ensureDir(DATA_DIR);
 
@@ -36,6 +38,21 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Owner-only aggregate stats. Disabled entirely when STATS_TOKEN is unset
+// so the endpoint never exists publicly. Returns counts only — no member
+// names, IDs, or room codes. The relay already tracks this internally to
+// route saves and lock state; we're exposing aggregates of existing data,
+// not collecting anything new from clients.
+app.get('/stats', (req, res) => {
+  if (!STATS_TOKEN) return res.status(404).json({ error: 'not_found' });
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!token || token !== STATS_TOKEN) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  res.json(getAggregateStats());
+});
 
 app.post('/rooms', (req, res) => {
   const { memberId, memberName } = req.body || {};
