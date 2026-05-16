@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import {
   enable as enableAutostart,
   disable as disableAutostart,
   isEnabled as isAutostartEnabled,
 } from '@tauri-apps/plugin-autostart';
+import { check as checkUpdate } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 import { useStore, type SelectedGame } from '../lib/store';
 import { ChevronLeftIcon, BookmarkIcon } from '../lib/ui';
 
@@ -51,6 +54,36 @@ export default function Settings() {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [detected, setDetected] = useState<DetectedGame[] | null>(null);
+
+  const [version, setVersion] = useState<string>('');
+  const [updateChecking, setUpdateChecking] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => setVersion('?'));
+  }, []);
+
+  async function handleCheckUpdate() {
+    setUpdateChecking(true);
+    setUpdateMsg(null);
+    try {
+      const u = await checkUpdate();
+      if (!u) {
+        setUpdateMsg("You're up to date");
+        setTimeout(() => setUpdateMsg(null), 4000);
+        return;
+      }
+      setUpdateMsg(`Downloading v${u.version}…`);
+      await u.downloadAndInstall();
+      setUpdateMsg('Installed — restarting…');
+      setTimeout(() => { relaunch(); }, 1000);
+    } catch (e: any) {
+      setUpdateMsg(`Check failed: ${String(e?.message || e)}`);
+      setTimeout(() => setUpdateMsg(null), 6000);
+    } finally {
+      setUpdateChecking(false);
+    }
+  }
 
   useEffect(() => {
     isAutostartEnabled().then((on) => {
@@ -188,18 +221,18 @@ export default function Settings() {
         {/* Active selection summary */}
         {(selectedGame || selectedIsManual) && (
           <div className="card">
-            <div className="label">Active game</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>
-                  {selectedGame ? selectedGame.name : basename(gamePath)}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
-                  {selectedGame ? selectedGame.exeName : 'manual file'} ·{' '}
-                  {selectedGame ? 'folder sync' : 'single file'}
-                </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="label">Active game</div>
+              <button className="subtle-link" onClick={clearSelection}>Change</button>
+            </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>
+                {selectedGame ? selectedGame.name : basename(gamePath)}
               </div>
-              <button className="btn btn-ghost" onClick={clearSelection}>Change</button>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                {selectedGame ? selectedGame.exeName : 'manual file'} ·{' '}
+                {selectedGame ? 'folder sync' : 'single file'}
+              </div>
             </div>
             <div className="path-display">{selectedGame?.savePath || gamePath}</div>
           </div>
@@ -355,6 +388,30 @@ export default function Settings() {
           <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
             Point this at your own server for full privacy. See SELF_HOSTING.md.
           </div>
+        </div>
+
+        {/* App version + manual update check */}
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Savehop v{version || '…'}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                Updates install automatically when you open the app.
+              </div>
+            </div>
+            <button
+              className="btn"
+              style={{ padding: '10px 14px', fontSize: 13, whiteSpace: 'nowrap' }}
+              onClick={handleCheckUpdate}
+              disabled={updateChecking}
+            >
+              {updateChecking ? <span className="spinner" /> : null}
+              Check for updates
+            </button>
+          </div>
+          {updateMsg && (
+            <div style={{ fontSize: 12, color: 'var(--accent)', marginTop: 4 }}>{updateMsg}</div>
+          )}
         </div>
 
         <div style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 11, padding: '8px 0 16px' }}>
