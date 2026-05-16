@@ -1,6 +1,6 @@
 # Savehop: Co-op Save Sync for Windows
 
-> **Play any co-op game together — even when the host is offline.**
+> **Play any co-op game together, even when the host is offline.**
 > No port forwarding. No dedicated servers. No accounts. Free and open source.
 
 [![Download latest release](https://img.shields.io/github/v/release/vixco/savehop?label=Download&color=22d3b8&style=flat-square)](https://github.com/vixco/savehop/releases/latest)
