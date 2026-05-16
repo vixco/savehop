@@ -79,6 +79,15 @@ export default function Room() {
   const saveKind: 'folder' | 'file' = selectedGame ? selectedGame.saveKind : 'file';
   const hasSyncTarget = !!savePath;
 
+  const launchGame = useCallback(async () => {
+    if (!selectedGame?.exePath) return;
+    try {
+      await invoke('launch_game', { exePath: selectedGame.exePath });
+    } catch (e: any) {
+      showToast(`Couldn't launch: ${String(e?.message || e)}`);
+    }
+  }, [selectedGame?.exePath, showToast]);
+
   const doWake = useCallback(async () => {
     if (!code || !hasSyncTarget) return;
     setError(null);
@@ -106,6 +115,13 @@ export default function Room() {
       return null;
     }
   }, [code, hasSyncTarget, savePath, saveKind, memberId, serverUrl, setRoom, setSyncStatus, showToast]);
+
+  const wakeAndPlay = useCallback(async () => {
+    const r = await doWake();
+    if (r && selectedGame?.exePath) {
+      await launchGame();
+    }
+  }, [doWake, launchGame, selectedGame?.exePath]);
 
   const doSleep = useCallback(async () => {
     if (!code || !hasSyncTarget) return;
@@ -192,17 +208,34 @@ export default function Room() {
     doWake();
   }, [room, autoWakeOnLaunch, hasSyncTarget, memberId, doWake, showToast]);
 
-  // Auto-sleep on game exit (real process watch via sysinfo)
+  // Process watcher — auto-claim lock on game-start, auto-sleep on game-exit.
+  // Runs whenever a game executable is configured, regardless of host status,
+  // so we can detect when the user launches the game without clicking Wake first.
   useEffect(() => {
-    if (!autoSleepOnGameExit) return;
     if (!selectedGame?.exeName) return;
-    if (!room || room.lockHolder !== memberId) return;
+    if (!room) return;
     if (watchActive.current) return;
 
     watchActive.current = true;
     invoke('start_game_watch', { executable: selectedGame.exeName }).catch(() => {});
 
-    const un = listen<{ executable: string }>('savehop:game-stopped', async () => {
+    const startedUn = listen<{ executable: string }>('savehop:game-started', async () => {
+      // Game just started. If we don't hold the lock yet and it's available, claim it.
+      const r = useStore.getState().room;
+      if (!r) return;
+      if (r.lockHolder === memberId) return; // already host
+      if (r.lockHolder) {
+        showToast(`Game started but ${r.lockHolderName} has the save — close + wait for them`);
+        return;
+      }
+      showToast('Game detected — claiming save…');
+      await doWake();
+    });
+
+    const stoppedUn = listen<{ executable: string }>('savehop:game-stopped', async () => {
+      if (!autoSleepOnGameExit) return;
+      const r = useStore.getState().room;
+      if (!r || r.lockHolder !== memberId) return; // only sleep if we held the lock
       showToast('Game closed — uploading save…');
       await doSleep();
     });
@@ -210,9 +243,10 @@ export default function Room() {
     return () => {
       watchActive.current = false;
       invoke('stop_game_watch').catch(() => {});
-      un.then((u) => u()).catch(() => {});
+      startedUn.then((u) => u()).catch(() => {});
+      stoppedUn.then((u) => u()).catch(() => {});
     };
-  }, [autoSleepOnGameExit, selectedGame?.exeName, room?.lockHolder, memberId, doSleep, showToast]);
+  }, [selectedGame?.exeName, room?.code, autoSleepOnGameExit, memberId, doSleep, doWake, showToast]);
 
   async function copyCode() {
     if (!code) return;
@@ -386,16 +420,19 @@ export default function Room() {
           )}
         </div>
 
-        {!isLocked && (
-          <button
-            className="btn btn-primary btn-action"
-            onClick={doWake}
-            disabled={!hasSyncTarget || syncStatus === 'downloading' || syncStatus === 'uploading'}
-          >
-            {syncStatus === 'downloading' ? <span className="spinner" /> : <SunIcon />}
-            Wake Session
-          </button>
-        )}
+        {!isLocked && (() => {
+          const canLaunch = selectedGame?.exePath?.toLowerCase().endsWith('.exe') ?? false;
+          return (
+            <button
+              className="btn btn-primary btn-action"
+              onClick={canLaunch ? wakeAndPlay : doWake}
+              disabled={!hasSyncTarget || syncStatus === 'downloading' || syncStatus === 'uploading'}
+            >
+              {syncStatus === 'downloading' ? <span className="spinner" /> : <SunIcon />}
+              {canLaunch ? `Play ${selectedGame!.name}` : 'Wake Session'}
+            </button>
+          );
+        })()}
         {youHoldLock && (
           <button
             className="btn btn-primary btn-action"

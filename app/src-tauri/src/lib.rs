@@ -244,6 +244,22 @@ fn stop_game_watch(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn launch_game(exe_path: String) -> Result<(), String> {
+    use std::path::Path;
+    use std::process::Command;
+    let p = Path::new(&exe_path);
+    if !p.exists() {
+        return Err(format!("Executable not found: {}", exe_path));
+    }
+    let working_dir = p.parent().unwrap_or(Path::new("."));
+    Command::new(&exe_path)
+        .current_dir(working_dir)
+        .spawn()
+        .map_err(|e| format!("Failed to launch: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
 fn show_main_window(app: AppHandle) -> Result<(), String> {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
@@ -334,6 +350,7 @@ pub fn run() {
             resolve_save_path,
             start_game_watch,
             stop_game_watch,
+            launch_game,
             show_main_window,
         ])
         .run(tauri::generate_context!())

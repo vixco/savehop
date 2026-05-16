@@ -77,6 +77,14 @@ export default function Settings() {
     if (detected === null) scan();
   }, [detected, scan]);
 
+  // Auto-pick a game when none is selected yet and we found exactly one — zero-click setup
+  useEffect(() => {
+    if (!selectedGame && !gamePath && detected && detected.length === 1) {
+      pickGame(detected[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detected]);
+
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 1600);

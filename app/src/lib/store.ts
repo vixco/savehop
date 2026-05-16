@@ -109,8 +109,8 @@ export const useStore = create<Store>()(
       errorMessage: null,
 
       autoRejoin: true,
-      autoWakeOnLaunch: false,
-      autoSleepOnGameExit: false,
+      autoWakeOnLaunch: true,
+      autoSleepOnGameExit: true,
       autoWakeOnPromotion: true,
       startMinimized: false,
       launchOnStartup: false,
