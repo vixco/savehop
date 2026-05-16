@@ -25,7 +25,7 @@ A domain name is optional. You can point the Savehop app at a raw IP and port if
 ## Option 1 — Docker Compose (easiest)
 
 ```bash
-git clone https://github.com/savehop/savehop.git
+git clone https://github.com/vixco/savehop.git
 cd savehop
 docker compose up -d
 ```
@@ -53,7 +53,7 @@ docker compose down
 ## Option 2 — Bare Node.js
 
 ```bash
-git clone https://github.com/savehop/savehop.git
+git clone https://github.com/vixco/savehop.git
 cd savehop/server
 npm install --omit=dev
 PORT=8787 DATA_DIR=./data node index.js
@@ -83,7 +83,7 @@ fly volumes create savehop_data --size 1
 fly deploy
 ```
 
-Point the Savehop app at `https://your-savehop.fly.dev`.
+Point the Savehop app at `https://savehop.yourdomain.com`.
 
 ### Railway
 

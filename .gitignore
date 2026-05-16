@@ -30,3 +30,6 @@ data/
 
 # Design references (kept locally, not pushed)
 *.pdf
+
+# Claude project files
+.claude/

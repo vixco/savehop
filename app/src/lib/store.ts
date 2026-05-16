@@ -43,7 +43,7 @@ function uuid() {
   });
 }
 
-const DEFAULT_SERVER = (import.meta as any).env?.VITE_SERVER_URL || 'https://savehop.fly.dev';
+const DEFAULT_SERVER = (import.meta as any).env?.VITE_SERVER_URL || 'https://savehop.tovix.com';
 
 type Store = {
   // Identity

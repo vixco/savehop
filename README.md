@@ -3,11 +3,11 @@
 > **Play any co-op game together — even when the host is offline.**
 > No port forwarding. No dedicated servers. No accounts. Free and open source.
 
-[![Download latest release](https://img.shields.io/github/v/release/savehop/savehop?label=Download&color=22d3b8&style=flat-square)](https://github.com/savehop/savehop/releases/latest)
-[![Windows 10/11](https://img.shields.io/badge/Windows-10%20%2F%2011-0078d4?style=flat-square&logo=windows)](https://github.com/savehop/savehop/releases/latest)
+[![Download latest release](https://img.shields.io/github/v/release/vixco/savehop?label=Download&color=22d3b8&style=flat-square)](https://github.com/vixco/savehop/releases/latest)
+[![Windows 10/11](https://img.shields.io/badge/Windows-10%20%2F%2011-0078d4?style=flat-square&logo=windows)](https://github.com/vixco/savehop/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22d3b8?style=flat-square)](LICENSE)
 [![Self-host with Docker](https://img.shields.io/badge/self--host-docker-2496ed?style=flat-square&logo=docker)](SELF_HOSTING.md)
-[![Stars](https://img.shields.io/github/stars/savehop/savehop?style=flat-square)](https://github.com/savehop/savehop/stargazers)
+[![Stars](https://img.shields.io/github/stars/vixco/savehop?style=flat-square)](https://github.com/vixco/savehop/stargazers)
 
 ---
 
@@ -72,7 +72,7 @@ If your game saves into a *folder* instead of a single file, zip it before point
 
 ## Download
 
-[**→ Download the latest installer from the GitHub Releases page**](https://github.com/savehop/savehop/releases/latest)
+[**→ Download the latest installer from the GitHub Releases page**](https://github.com/vixco/savehop/releases/latest)
 
 Pick `Savehop-Setup-x.y.z.exe`, run it, done.
 
@@ -97,10 +97,10 @@ That's the whole workflow. If somebody crashes or forgets to Sleep, click **Forc
 
 ## Self-hosting the server
 
-You can absolutely just use the public relay at `https://savehop.fly.dev` and never think about it. But if you want full ownership of your save files, you can run your own in **one command**:
+You can absolutely just use the public relay at `https://savehop.tovix.com` and never think about it. But if you want full ownership of your save files, you can run your own in **one command**:
 
 ```bash
-git clone https://github.com/savehop/savehop.git
+git clone https://github.com/vixco/savehop.git
 cd savehop
 docker compose up -d
 ```

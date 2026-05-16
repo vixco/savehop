@@ -327,7 +327,7 @@ export default function Settings() {
             onChange={(e) => setServerDraft(e.target.value)}
             onBlur={saveServer}
             onKeyDown={(e) => { if (e.key === 'Enter') saveServer(); }}
-            placeholder="https://savehop.fly.dev"
+            placeholder="https://savehop.tovix.com"
           />
           <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
             Point this at your own server for full privacy. See SELF_HOSTING.md.
