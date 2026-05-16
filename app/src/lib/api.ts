@@ -59,7 +59,11 @@ export const api = {
   async sleep(server: string, code: string, memberId: string, data: Uint8Array): Promise<RoomState> {
     const form = new FormData();
     form.append('memberId', memberId);
-    form.append('save', new Blob([data], { type: 'application/octet-stream' }), 'save.bin');
+    // Copy into a fresh ArrayBuffer so the Blob constructor sees ArrayBuffer (not SharedArrayBuffer)
+    // — required by TypeScript 5.7+'s stricter Uint8Array generics.
+    const ab = new ArrayBuffer(data.byteLength);
+    new Uint8Array(ab).set(data);
+    form.append('save', new Blob([ab], { type: 'application/octet-stream' }), 'save.bin');
     const res = await fetch(`${server}/rooms/${code}/sleep`, { method: 'POST', body: form });
     return (await handle<{ room: RoomState }>(res)).room;
   },
