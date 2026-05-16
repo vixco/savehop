@@ -40,7 +40,8 @@ export function createRoom(creator) {
     },
   };
   persistRooms(rooms);
-  return rooms[code];
+  // Serialize before returning so clients always see members as an array.
+  return serializeRoom(rooms[code]);
 }
 
 export function getRoom(code) {
