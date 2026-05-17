@@ -1,0 +1,27 @@
+[Unit]
+Description=Savehop relay external watchdog
+Documentation=https://github.com/vixco/savehop
+After=docker.service cloudflared.service network-online.target
+Wants=network-online.target
+PartOf=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/savehop-watchdog
+Restart=always
+RestartSec=10
+# Belt-and-suspenders: if the watchdog itself dies repeatedly, systemd will
+# keep restarting it. StartLimit* below caps the runaway loop so we don't
+# spam logs every second on a hard failure.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=savehop-watchdog
+
+# Run as root because we need docker and systemctl. The watchdog only does
+# health checks + restarts; minimal blast radius.
+User=root
+
+[Install]
+WantedBy=multi-user.target
