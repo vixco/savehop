@@ -4,11 +4,44 @@ services:
     image: savehop-server:local
     container_name: savehop
     restart: unless-stopped
+    # Bind to localhost only; public access goes through cloudflared.
+    # Keeps the relay off the LAN even on a misconfigured firewall.
     ports:
-      - "8787:8787"
+      - "127.0.0.1:8787:8787"
     volumes:
       - ./data:/data
     environment:
       PORT: 8787
       DATA_DIR: /data
       MAX_SAVE_MB: 100
+    labels:
+      # Tells autoheal it's allowed to force-restart this container when its
+      # Docker HEALTHCHECK reports "unhealthy" (covers the stuck-but-alive
+      # failure mode that `restart: unless-stopped` alone cannot recover from).
+      - autoheal=true
+    # Hard cap so a runaway leak takes down only the relay, never the host
+    mem_limit: 384m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Watches every container that has the `autoheal=true` label and force-
+  # restarts it if its HEALTHCHECK goes unhealthy for several intervals.
+  # Tiny image (~10 MB), zero config beyond the docker socket.
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: savehop-autoheal
+    restart: always
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 10
+      AUTOHEAL_START_PERIOD: 30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "2m"
+        max-file: "2"

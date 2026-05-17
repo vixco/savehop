@@ -22,6 +22,18 @@ const MAX_SAVE_MB = Number(process.env.MAX_SAVE_MB || 100);
 const DATA_DIR = process.env.DATA_DIR || './data';
 const STATS_TOKEN = process.env.STATS_TOKEN || '';
 
+// Process-level safety nets. Without these, a single unhandled rejection
+// or uncaught exception silently exits the Node process — the container
+// restarts but you lose all logs and have no idea what hit. Log loudly
+// so the Docker healthcheck + autoheal loop can pick up the restart
+// while operators still see the cause in `docker logs`.
+process.on('uncaughtException', (err) => {
+  console.error('[savehop] uncaughtException:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[savehop] unhandledRejection:', reason);
+});
+
 ensureDir(DATA_DIR);
 
 const app = express();
@@ -139,3 +151,15 @@ wss.on('connection', (ws, req) => {
 server.listen(PORT, () => {
   console.log(`[savehop] listening on :${PORT} (data=${DATA_DIR}, max=${MAX_SAVE_MB}MB)`);
 });
+
+// Graceful shutdown so `docker stop` exits in a second or two instead of
+// hitting the default 10s SIGKILL fallback. Speeds up redeploys and avoids
+// half-open WebSockets confusing the autoheal loop.
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, () => {
+    console.log(`[savehop] received ${sig}, draining`);
+    wss.clients.forEach((c) => { try { c.close(1001, 'shutdown'); } catch {} });
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 2000).unref();
+  });
+}
