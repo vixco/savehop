@@ -16,7 +16,7 @@
 set -u
 
 LOCAL_URL="${LOCAL_URL:-http://127.0.0.1:8787/health}"
-PUBLIC_URL="${PUBLIC_URL:-https://relay.savehop.tovix.nl/health}"
+PUBLIC_URL="${PUBLIC_URL:-https://savehoprelay.tovix.nl/health}"
 INTERVAL="${INTERVAL:-30}"
 FAILS_BEFORE_ACTION="${FAILS_BEFORE_ACTION:-3}"
 COMPOSE_DIR="${COMPOSE_DIR:-/opt/savehop}"

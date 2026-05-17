@@ -43,12 +43,13 @@ function uuid() {
   });
 }
 
-export const DEFAULT_SERVER: string = (import.meta as any).env?.VITE_SERVER_URL || 'https://relay.savehop.tovix.nl';
+export const DEFAULT_SERVER: string = (import.meta as any).env?.VITE_SERVER_URL || 'https://savehoprelay.tovix.nl';
 
 /** URLs that used to be the default — wipe them out of localStorage on app upgrade. */
 const STALE_DEFAULTS = new Set<string>([
   'https://savehop.fly.dev',
   'https://savehop.tovix.com',
+  'https://relay.savehop.tovix.nl',
   '',
 ]);
 
@@ -139,7 +140,7 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'savehop',
-      version: 4,
+      version: 5,
       migrate: (persisted: any, fromVersion) => {
         if (!persisted) return persisted;
         if (fromVersion < 2 && STALE_DEFAULTS.has(persisted.serverUrl)) {
@@ -148,9 +149,15 @@ export const useStore = create<Store>()(
         if (fromVersion < 3 && typeof persisted.autoWakeOnPromotion !== 'boolean') {
           persisted.autoWakeOnPromotion = true;
         }
-        // v4: tovix.com relay moved to relay.savehop.tovix.nl. Only flip
-        // users that were still on the old default; leave self-hosters alone.
+        // v4: tovix.com relay moved to relay.savehop.tovix.nl.
         if (fromVersion < 4 && STALE_DEFAULTS.has(persisted.serverUrl)) {
+          persisted.serverUrl = DEFAULT_SERVER;
+        }
+        // v5: relay.savehop.tovix.nl couldn't get an SSL cert (Cloudflare
+        // Universal SSL is single-level wildcard, two-deep subdomain
+        // doesn't get covered). Moved to savehoprelay.tovix.nl. Only flip
+        // users on a known-stale default; leave self-hosters alone.
+        if (fromVersion < 5 && STALE_DEFAULTS.has(persisted.serverUrl)) {
           persisted.serverUrl = DEFAULT_SERVER;
         }
         return persisted;
